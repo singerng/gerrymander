@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <style>
+
+        .background {
+            fill: none;
+            pointer-events: all;
+        }
+
+        .precinct {
+            fill: #ccc;
+            cursor: pointer;
+        }
+
+        .precinct:hover {
+            fill: #cce;
+        }
+
+        .precinct.active {
+            fill: orange;
+        }
+
+        .mesh {
+            fill: none;
+            stroke: #fff;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+<body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-geo.v1.min.js"></script>
+<script src="https://d3js.org/d3-zoom.v1.min.js"></script>
+<script src="https://unpkg.com/topojson@3"></script>
+<script>
+  var width = 960;
+  var height = 500;
+
+  var expanse = 0.95;
+
+  var active = d3.select(null);
+
+  var projection = d3.geoAlbers().scale(1).translate([0, 0]);
+  var path = d3.geoPath().projection(projection);
+
+  var zoom = d3.zoom()
+    .scaleExtent([1,16])
+    .on("zoom", zoomed);
+
+  var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .on("click", stopped, true);
+
+  svg.append("rect")
+    .attr("class", "background")
+    .attr("width", width)
+    .attr("height", height)
+    .on("click", reset);
+
+  var g = svg.append("g");
+
+  function focus(features) {
+    var bounds = path.bounds(features);
+    var scale = expanse / Math.max((bounds[1][0] - bounds[0][0]) / width, (bounds[1][1] - bounds[0][1]) / height),
+      translate = [(width - scale * (bounds[1][0] + bounds[0][0])) / 2, (height - scale * (bounds[1][1] + bounds[0][1])) / 2];
+    return { scale: scale, translate: translate };
+  }
+
+  d3.json("./moco.json", function(error, us) {
+    if (error) throw error;
+    var precincts = us.objects.precincts;
+    var features = topojson.feature(us, precincts);
+    var stateFocus = focus(features);
+    projection.scale(stateFocus.scale).translate(stateFocus.translate);
+
+    g.selectAll("path")
+      .data(features.features)
+      .enter().append("path")
+      .attr("d", path)
+      .attr("class", "precinct")
+      .on("click", clicked);
+
+    g.append("path")
+      .datum(topojson.mesh(us, precincts, function(a, b) { return a !== b; }))
+      .attr("class", "mesh")
+      .attr("d", path);
+
+    svg.call(zoom);
+  });
+
+  function clicked(precinct) {
+    if (active.node() === this) return reset();
+    active.classed("active", false);
+    active = d3.select(this).classed("active", true);
+    var precinctFocus = focus(precinct);
+
+    svg.transition()
+      .duration(750)
+      .call(zoom.transform, d3.zoomIdentity.translate(precinctFocus.translate[0], precinctFocus.translate[1]).scale(precinctFocus.scale));
+  }
+
+  function reset() {
+    active.classed("active", false);
+    active = d3.select(null);
+
+    svg.transition()
+      .duration(750)
+      .call(zoom.transform, d3.zoomIdentity);
+  }
+
+  function zoomed() {
+    g.style("stroke-width", 1 / d3.event.transform.k + "px");
+    g.attr("transform", d3.event.transform);
+  }
+
+  function stopped() {
+    if (d3.event.defaultPrevented) d3.event.stopPropagation();
+  }
+
+  /* Resources:
+   * https://bl.ocks.org/iamkevinv/0a24e9126cd2fa6b283c6f2d774b69a2
+   * https://bl.ocks.org/mbostock/9656675
+   */
+</script>
