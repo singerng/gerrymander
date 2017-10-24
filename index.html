@@ -2,7 +2,6 @@
 <head>
     <meta charset="utf-8">
     <style>
-
         .background {
             fill: none;
             pointer-events: all;
@@ -27,101 +26,41 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+
+        .cd-color {
+            display: block;
+            width: 100%;
+            padding: .2em .4em;
+            border-radius: .2em;
+        }
     </style>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+    <script src="https://d3js.org/d3-zoom.v1.min.js"></script>
+    <script src="https://unpkg.com/topojson@3"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"
+            integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
 </head>
 <body>
-<script src="https://d3js.org/d3.v4.min.js"></script>
-<script src="https://d3js.org/d3-geo.v1.min.js"></script>
-<script src="https://d3js.org/d3-zoom.v1.min.js"></script>
-<script src="https://unpkg.com/topojson@3"></script>
-<script>
-  var width = 960;
-  var height = 500;
+<div class="container">
+    <br/><br/>
+    <h1>Gerrymandering</h1>
 
-  var expanse = 0.95;
+    <div class="row">
+        <div class="col-md-2">
+            <div class="form-group">
+                <input type="number" class="form-control" id="cd-count" placeholder="# of Districts" onchange="changeCDCount();">
+            </div>
 
-  var active = d3.select(null);
-
-  var projection = d3.geoAlbers().scale(1).translate([0, 0]);
-  var path = d3.geoPath().projection(projection);
-
-  var zoom = d3.zoom()
-    .scaleExtent([1,16])
-    .on("zoom", zoomed);
-
-  var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .on("click", stopped, true);
-
-  svg.append("rect")
-    .attr("class", "background")
-    .attr("width", width)
-    .attr("height", height)
-    .on("click", reset);
-
-  var g = svg.append("g");
-
-  function focus(features) {
-    var bounds = path.bounds(features);
-    var scale = expanse / Math.max((bounds[1][0] - bounds[0][0]) / width, (bounds[1][1] - bounds[0][1]) / height),
-      translate = [(width - scale * (bounds[1][0] + bounds[0][0])) / 2, (height - scale * (bounds[1][1] + bounds[0][1])) / 2];
-    return { scale: scale, translate: translate };
-  }
-
-  d3.json("./moco.json", function(error, us) {
-    if (error) throw error;
-    var precincts = us.objects.precincts;
-    var features = topojson.feature(us, precincts);
-    var stateFocus = focus(features);
-    projection.scale(stateFocus.scale).translate(stateFocus.translate);
-
-    g.selectAll("path")
-      .data(features.features)
-      .enter().append("path")
-      .attr("d", path)
-      .attr("class", "precinct")
-      .on("click", clicked);
-
-    g.append("path")
-      .datum(topojson.mesh(us, precincts, function(a, b) { return a !== b; }))
-      .attr("class", "mesh")
-      .attr("d", path);
-
-    svg.call(zoom);
-  });
-
-  function clicked(precinct) {
-    if (active.node() === this) return reset();
-    active.classed("active", false);
-    active = d3.select(this).classed("active", true);
-    var precinctFocus = focus(precinct);
-
-    svg.transition()
-      .duration(750)
-      .call(zoom.transform, d3.zoomIdentity.translate(precinctFocus.translate[0], precinctFocus.translate[1]).scale(precinctFocus.scale));
-  }
-
-  function reset() {
-    active.classed("active", false);
-    active = d3.select(null);
-
-    svg.transition()
-      .duration(750)
-      .call(zoom.transform, d3.zoomIdentity);
-  }
-
-  function zoomed() {
-    g.style("stroke-width", 1 / d3.event.transform.k + "px");
-    g.attr("transform", d3.event.transform);
-  }
-
-  function stopped() {
-    if (d3.event.defaultPrevented) d3.event.stopPropagation();
-  }
-
-  /* Resources:
-   * https://bl.ocks.org/iamkevinv/0a24e9126cd2fa6b283c6f2d774b69a2
-   * https://bl.ocks.org/mbostock/9656675
-   */
-</script>
+            <div class="form-group" id="cd-selectors">
+            </div>
+        </div>
+        <div class="col-md-8" id="svg-wrapper"></div>
+        <div class="col-md-2" id="cd-metrics"></div>
+    </div>
+</div>
+<script src="index.js"></script>
+</body>
+</html>
