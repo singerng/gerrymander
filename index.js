@@ -8,15 +8,16 @@ var active = d3.select(null);
 var projection = d3.geoAlbers().scale(1).translate([0, 0]);
 var path = d3.geoPath().projection(projection);
 
+// Setup zooming
 var zoom = d3.zoom()
   .scaleExtent([1,16])
   .on("zoom", zoomed);
 
+// Attach d3 to the SVG
 var svg = d3.select("#svg-wrapper").append("svg")
   .attr("width", width)
   .attr("height", height)
   .on("click", stopped, true);
-
 svg.append("rect")
   .attr("class", "background")
   .attr("width", width)
@@ -25,6 +26,7 @@ svg.append("rect")
 
 var g = svg.append("g");
 
+// Focus on a set of features in the map
 function focus(features) {
   var bounds = path.bounds(features);
   var scale = expanse / Math.max((bounds[1][0] - bounds[0][0]) / width, (bounds[1][1] - bounds[0][1]) / height),
@@ -38,20 +40,23 @@ function update() {
 
 var features;
 
+// Load the "moco.json" file
 d3.json("./moco.json", function(error, state) {
   if (error) throw error;
   var precincts = state.objects.precincts;
   features = topojson.feature(state, precincts);
+
+  // Setup the initial focus on the entire map
   var stateFocus = focus(features);
   projection.scale(stateFocus.scale).translate(stateFocus.translate);
 
+  // Add the features to the SVG
   g.selectAll("path")
     .data(features.features)
     .enter().append("path")
     .attr("d", path)
     .attr("class", "precinct")
     .on("click", clicked);
-
   g.append("path")
     .datum(topojson.mesh(state, precincts, function(a, b) { return a !== b; }))
     .attr("class", "mesh")
@@ -61,6 +66,7 @@ d3.json("./moco.json", function(error, state) {
 });
 
 
+// Reset when a region outside the map is clicked
 function reset() {
   active.classed("active", false);
   active = d3.select(null);
@@ -70,8 +76,11 @@ function reset() {
     .call(zoom.transform, d3.zoomIdentity);
 }
 
+// Change the SVG when the map is zoomed
 function zoomed() {
+  // Keep the lines the same thickness
   g.style("stroke-width", 1 / d3.event.transform.k + "px");
+  // Actually apply the transform
   g.attr("transform", d3.event.transform);
 }
 
@@ -86,10 +95,12 @@ function stopped() {
 
 var cds = 8;
 
+// Compute the color of a district
 function color(cd) {
   return "hsl(" + 360 / cds * (cd - 1) + ", 60%, 70%)";
 }
 
+// Set the district of a given precinct
 function setCD(precinct, elem, cd) {
   console.log(precinct);
   precinct.properties.cd = cd;
@@ -112,6 +123,7 @@ function changeCDCount() {
   calculateMetrics();
 }
 
+// Set the district of a precinct when clicked
 function clicked(precinct) {
 //    if (active.node() === this) return reset();
 //    active.classed("active", false);
@@ -125,6 +137,7 @@ function clicked(precinct) {
   calculateMetrics();
 }
 
+// Calculate metrics for those districts
 function calculateMetrics() {
   $("#cd-metrics").empty();
 
