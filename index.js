@@ -1,20 +1,20 @@
-var width = 600;
-var height = 400;
+const width = 900;
+const height = 600;
+const expanse = 0.95;
 
-var expanse = 0.95;
+let active = d3.select(null);
 
-var active = d3.select(null);
-
-var projection = d3.geoAlbers().scale(1).translate([0, 0]);
-var path = d3.geoPath().projection(projection);
+let projection = d3.geoAlbers().scale(1).translate([0, 0]);
+let path = d3.geoPath().projection(projection);
 
 // Setup zooming
-var zoom = d3.zoom()
+let zoom = d3.zoom()
   .scaleExtent([1,16])
-  .on("zoom", zoomed);
+  .on("zoom", zoomed)
+  .filter(() => false);
 
 // Attach d3 to the SVG
-var svg = d3.select("#svg-wrapper").append("svg")
+let svg = d3.select("#svg-wrapper").append("svg")
   .attr("width", width)
   .attr("height", height)
   .on("click", stopped, true);
@@ -24,30 +24,58 @@ svg.append("rect")
   .attr("height", height)
   .on("click", reset);
 
-var g = svg.append("g");
+// http://bl.ocks.org/lgersman/5310854
+svg
+  .on("mousedown", function() {
+    let mouse = d3.mouse(this);
+    svg.append("rect")
+      .attrs({ class: "selection", origX: mouse[0], origY: mouse[1], width: 0, height: 0 });
+  })
+  .on("mousemove", function() {
+    let rect = svg.select(".selection");
+
+    if (!rect.empty()) {
+      let mouse = d3.mouse(this);
+
+      let attr = {
+        origX: parseInt(rect.attr("origX"), 10),
+        origY: parseInt(rect.attr("origY"), 10),
+        width: parseInt(rect.attr("width"), 10),
+        height: parseInt(rect.attr("height"), 10)
+      };
+
+      attr.width = Math.abs(mouse[0] - attr.origX);
+      attr.height = Math.abs(mouse[1] - attr.origY);
+      attr.x = Math.min(attr.origX, mouse[0]);
+      attr.y = Math.min(attr.origY, mouse[1]);
+
+      rect.attrs(attr);
+    }
+  })
+  .on("mouseup", function() {
+    svg.select("rect.selection").remove();
+  });
+
+let g = svg.append("g");
 
 // Focus on a set of features in the map
 function focus(features) {
-  var bounds = path.bounds(features);
-  var scale = expanse / Math.max((bounds[1][0] - bounds[0][0]) / width, (bounds[1][1] - bounds[0][1]) / height),
+  let bounds = path.bounds(features);
+  let scale = expanse / Math.max((bounds[1][0] - bounds[0][0]) / width, (bounds[1][1] - bounds[0][1]) / height),
     translate = [(width - scale * (bounds[1][0] + bounds[0][0])) / 2, (height - scale * (bounds[1][1] + bounds[0][1])) / 2];
   return { scale: scale, translate: translate };
 }
 
-function update() {
-  $("#cd")
-}
-
-var features;
+let features;
 
 // Load the "moco.json" file
 d3.json("./moco.json", function(error, state) {
   if (error) throw error;
-  var precincts = state.objects.precincts;
+  let precincts = state.objects.precincts;
   features = topojson.feature(state, precincts);
 
   // Setup the initial focus on the entire map
-  var stateFocus = focus(features);
+  let stateFocus = focus(features);
   projection.scale(stateFocus.scale).translate(stateFocus.translate);
 
   // Add the features to the SVG
@@ -92,17 +120,15 @@ function stopped() {
  * https://bl.ocks.org/iamkevinv/0a24e9126cd2fa6b283c6f2d774b69a2
  * https://bl.ocks.org/mbostock/9656675
  */
-
-var cds = 8;
+let cds = 8;
 
 // Compute the color of a district
 function color(cd) {
-  return "hsl(" + 360 / cds * (cd - 1) + ", 60%, 70%)";
+  return "hsl(" + 360 / cds * (cd - 1) + ", 70%, 70%)";
 }
 
 // Set the district of a given precinct
 function setCD(precinct, elem, cd) {
-  console.log(precinct);
   precinct.properties.cd = cd;
   elem.style("fill", color(cd));
 }
@@ -111,8 +137,8 @@ function changeCDCount() {
   cds = $("#cd-count").val();
   $("#cd-selectors").empty();
 
-  for (var i = 1; i <= cds; i++) {
-    var radio = $("<label class='custom-control custom-radio'>" +
+  for (let i = 1; i <= cds; i++) {
+    let radio = $("<label class='custom-control custom-radio'>" +
       "<input name='cd-selector' type='radio' class='custom-control-input' value='" + i + "'>" +
       "<span class='custom-control-indicator'></span>" +
       "<span class='custom-control-description cd-color' style='background-color: " + color(i) + ";'>District " + i + "</span></span>" +
@@ -123,17 +149,20 @@ function changeCDCount() {
   calculateMetrics();
 }
 
+// Get the currently selected precinct
+let selectedCD = () => $('input[name=cd-selector]:checked', '#cd-selectors').val();
+
 // Set the district of a precinct when clicked
 function clicked(precinct) {
 //    if (active.node() === this) return reset();
 //    active.classed("active", false);
 //    active = d3.select(this).classed("active", true);
-//    var precinctFocus = focus(precinct);
+//    let precinctFocus = focus(precinct);
 //
 //    svg.transition()
 //      .duration(750)
 //      .call(zoom.transform, d3.zoomIdentity.translate(precinctFocus.translate[0], precinctFocus.translate[1]).scale(precinctFocus.scale));
-  setCD(precinct, d3.select(this), $('input[name=cd-selector]:checked', '#cd-selectors').val());
+  setCD(precinct, d3.select(this), selectedCD());
   calculateMetrics();
 }
 
@@ -141,16 +170,16 @@ function clicked(precinct) {
 function calculateMetrics() {
   $("#cd-metrics").empty();
 
-  var districts = {};
+  let districts = {};
 
-  for (var i = 1; i <= cds; i++) {
+  for (let i = 1; i <= cds; i++) {
     districts[i] = {
       precincts: 0
     };
   }
 
-  for (var key in Object.values(features.features)) {
-    var feature = features.features[key];
+  for (let key in Object.values(features.features)) {
+    let feature = features.features[key];
     
     if (feature.properties.cd) {
       districts[feature.properties.cd].precincts++;
@@ -158,7 +187,7 @@ function calculateMetrics() {
   }
 
   for (i = 1; i <= cds; i++) {
-    var metric = $("<div>" +
+    let metric = $("<div>" +
     "<h3>District " + i + "</h3>" +
     "</div>");
 
