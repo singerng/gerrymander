@@ -4,14 +4,17 @@ const expanse = 0.95;
 
 let active = d3.select(null);
 
-let projection = d3.geoAlbers().scale(1).translate([0, 0]);
+let projection = d3.geoMercator().scale(1).translate([0, 0]);
 let path = d3.geoPath().projection(projection);
+
+let getSelectMode = () => $("input[type=radio][name=selectMode]:checked").val();
+let getSelectedCD = () => $('input[name=cd-selector]:checked', '#cd-selectors').val();
 
 // Setup zooming
 let zoom = d3.zoom()
   .scaleExtent([1,16])
   .on("zoom", zoomed)
-  .filter(() => false);
+  .filter(() => getSelectMode() === "none" || getSelectMode() === "single");
 
 // Attach d3 to the SVG
 let svg = d3.select("#svg-wrapper").append("svg")
@@ -24,14 +27,15 @@ svg.append("rect")
   .attr("height", height)
   .on("click", reset);
 
-// http://bl.ocks.org/lgersman/5310854
 svg
   .on("mousedown", function() {
+    if (getSelectMode() !== "rect") return;
     let mouse = d3.mouse(this);
     svg.append("rect")
       .attrs({ class: "selection", origX: mouse[0], origY: mouse[1], width: 0, height: 0 });
   })
   .on("mousemove", function() {
+    if (getSelectMode() !== "rect") return;
     let rect = svg.select(".selection");
 
     if (!rect.empty()) {
@@ -69,7 +73,7 @@ function focus(features) {
 let features;
 
 // Load the "moco.json" file
-d3.json("./moco.json", function(error, state) {
+d3.json("./md.json", function(error, state) {
   if (error) throw error;
   let precincts = state.objects.precincts;
   features = topojson.feature(state, precincts);
@@ -84,7 +88,19 @@ d3.json("./moco.json", function(error, state) {
     .enter().append("path")
     .attr("d", path)
     .attr("class", "precinct")
-    .on("click", clicked);
+    .on("click", function(precinct) {
+      if (getSelectMode() === "single") {
+        setCD(precinct, d3.select(this), getSelectedCD());
+        calculateMetrics();
+      }
+    })
+    .on("dblclick", function(precinct) {
+      d3.event.stopImmediatePropagation();
+      let precinctFocus = focus(precinct);
+      svg.transition()
+        .duration(750)
+        .call(zoom.transform, d3.zoomIdentity.translate(precinctFocus.translate[0], precinctFocus.translate[1]).scale(precinctFocus.scale));
+    });
   g.append("path")
     .datum(topojson.mesh(state, precincts, function(a, b) { return a !== b; }))
     .attr("class", "mesh")
@@ -92,7 +108,6 @@ d3.json("./moco.json", function(error, state) {
 
   svg.call(zoom);
 });
-
 
 // Reset when a region outside the map is clicked
 function reset() {
@@ -146,23 +161,6 @@ function changeCDCount() {
     $("#cd-selectors").append(radio);
   }
 
-  calculateMetrics();
-}
-
-// Get the currently selected precinct
-let selectedCD = () => $('input[name=cd-selector]:checked', '#cd-selectors').val();
-
-// Set the district of a precinct when clicked
-function clicked(precinct) {
-//    if (active.node() === this) return reset();
-//    active.classed("active", false);
-//    active = d3.select(this).classed("active", true);
-//    let precinctFocus = focus(precinct);
-//
-//    svg.transition()
-//      .duration(750)
-//      .call(zoom.transform, d3.zoomIdentity.translate(precinctFocus.translate[0], precinctFocus.translate[1]).scale(precinctFocus.scale));
-  setCD(precinct, d3.select(this), selectedCD());
   calculateMetrics();
 }
 
