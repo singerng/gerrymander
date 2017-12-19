@@ -11,6 +11,7 @@
         .precinct {
             fill: #ccc;
             cursor: pointer;
+            pointer-events: all;
         }
 
         .precinct.active {
@@ -19,7 +20,7 @@
 
         .mesh {
             fill: none;
-            stroke: #fff;
+            stroke: white;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
@@ -30,18 +31,17 @@
             padding: .2em .4em;
             border-radius: .2em;
         }
-
-        .selection {
-            stroke          : black;
-            stroke-width    : 1px;
-            stroke-dasharray: 4px;
-            stroke-opacity  : 0.8;
-            fill            : transparent;
-        }
     </style>
+
+    <script src="https://use.fontawesome.com/48e3852605.js"></script>
+
     <script src="https://d3js.org/d3.v4.min.js"></script>
-    <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+    <script src="https://d3js.org/d3-brush.v1.min.js"></script>
+    <script src="https://d3js.org/d3-color.v1.min.js"></script>
     <script src="https://d3js.org/d3-drag.v1.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://d3js.org/d3-selection-multi.v1.min.js"></script>
     <script src="https://d3js.org/d3-zoom.v1.min.js"></script>
 
@@ -52,7 +52,6 @@
             integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
-    <script src="https://use.fontawesome.com/48e3852605.js"></script>
 </head>
 <body>
 <div class="container" style="max-width: 90%;">
@@ -66,10 +65,10 @@
                     <input type="radio" name="selectMode" value="none" autocomplete="off"> None <i class="fa fa-times"></i>
                 </label>
                 <label class="btn btn-success">
-                    <input type="radio" name="selectMode" value="single" autocomplete="off" checked> Single <i class="fa fa-mouse-pointer"></i>
+                    <input type="radio" name="selectMode" value="select" autocomplete="off" checked> Select <i class="fa fa-mouse-pointer"></i>
                 </label>
                 <label class="btn btn-success">
-                    <input type="radio" name="selectMode" value="paint" autocomplete="off"> Paint <i class="fa fa-paint-brush"></i>
+                    <input type="radio" name="selectMode" value="region" autocomplete="off"> Region <i class="fa fa-crosshairs"></i>
                 </label>
             </div>
             <br/><br/>

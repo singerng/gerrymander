@@ -2,6 +2,7 @@
 
 const shapefile = require('shapefile');
 const topojson = require('topojson-server');
+const simplify = require('topojson-simplify');
 const parse = require('csv-parse/lib/sync');
 const console = require('console');
 const fs = require('fs');
@@ -33,9 +34,12 @@ request.get(util.format(counties_pattern, state_fips, state), (err, code, body) 
     .then(inputs => {
       let geojson = { type: 'FeatureCollection', features: [] };
       for (let input of inputs) {
-        geojson.features.push.apply(geojson.features, input.features);
+        for (let feature of input.features) {
+          if (feature.properties.VTDST10 !== "ZZZZZZ") geojson.features.push(feature);
+        }
       }
-      fs.writeFile("md.json", JSON.stringify(topojson.topology({ precincts: geojson })));
+      let topology = topojson.topology({ precincts: geojson });
+      fs.writeFile("md.json", JSON.stringify(simplify.simplify(simplify.presimplify(topology))));
     });
 });
 

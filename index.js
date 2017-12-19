@@ -10,11 +10,17 @@ let path = d3.geoPath().projection(projection);
 let getSelectMode = () => $("input[type=radio][name=selectMode]:checked").val();
 let getSelectedCD = () => $('input[name=cd-selector]:checked', '#cd-selectors').val();
 
+// Setup brushing
+let brush = d3.brush()
+  .extent([[0, 0], [width, height]])
+  .on("end", brushed)
+  .filter(() => getSelectMode() === "region");
+
 // Setup zooming
 let zoom = d3.zoom()
   .scaleExtent([1,16])
   .on("zoom", zoomed)
-  .filter(() => getSelectMode() === "none" || getSelectMode() === "single");
+  .filter(() => getSelectMode() === "none" || getSelectMode() === "select");
 
 // Attach d3 to the SVG
 let svg = d3.select("#svg-wrapper").append("svg")
@@ -88,28 +94,25 @@ d3.json("./md.json", function(error, state) {
     .enter().append("path")
     .attr("d", path)
     .attr("class", "precinct")
+    .style("fill", color)
     .on("click", function(precinct) {
-      if (getSelectMode() === "single") {
+      if (getSelectMode() === "select") {
         setCD(precinct, d3.select(this), getSelectedCD());
         calculateMetrics();
       }
-    })
-    .on("dblclick", function(precinct) {
-      d3.event.stopImmediatePropagation();
-      let precinctFocus = focus(precinct);
-      svg.transition()
-        .duration(750)
-        .call(zoom.transform, d3.zoomIdentity.translate(precinctFocus.translate[0], precinctFocus.translate[1]).scale(precinctFocus.scale));
     });
   g.append("path")
     .datum(topojson.mesh(state, precincts, function(a, b) { return a !== b; }))
     .attr("class", "mesh")
     .attr("d", path);
+  g.append("g")
+    .attr("class", "brush")
+    .call(brush);
 
   svg.call(zoom);
 });
 
-// Reset when a region outside the map is clicked
+// Reset.centroid() when a region outside the map is clicked
 function reset() {
   active.classed("active", false);
   active = d3.select(null);
@@ -119,8 +122,17 @@ function reset() {
     .call(zoom.transform, d3.zoomIdentity);
 }
 
+function brushed() {
+  if (d3.event.sourceEvent.type === "end") return;
+  let selection = d3.event.selection;
+  d3.selectAll(".precinct")
+    .filter(function(d) { console.log(d3.geoPath(d)); });
+  d3.select(".brush").call(brush.move, null);
+}
+
 // Change the SVG when the map is zoomed
 function zoomed() {
+  if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") return;
   // Keep the lines the same thickness
   g.style("stroke-width", 1 / d3.event.transform.k + "px");
   // Actually apply the transform
@@ -137,15 +149,20 @@ function stopped() {
  */
 let cds = 8;
 
+function colorPrecinct(d) {
+  return color(d.properties.cd);
+}
+
 // Compute the color of a district
 function color(cd) {
-  return "hsl(" + 360 / cds * (cd - 1) + ", 70%, 70%)";
+  if (!cd) return "#ccc";
+  return d3.scaleSequential(d3.interpolateSpectral).domain([0,cds])(cd);
 }
 
 // Set the district of a given precinct
 function setCD(precinct, elem, cd) {
   precinct.properties.cd = cd;
-  elem.style("fill", color(cd));
+  elem.style("fill", colorPrecinct);
 }
 
 function changeCDCount() {
@@ -156,7 +173,7 @@ function changeCDCount() {
     let radio = $("<label class='custom-control custom-radio'>" +
       "<input name='cd-selector' type='radio' class='custom-control-input' value='" + i + "'>" +
       "<span class='custom-control-indicator'></span>" +
-      "<span class='custom-control-description cd-color' style='background-color: " + color(i) + ";'>District " + i + "</span></span>" +
+      "<span class='custom-control-description cd-color' style='background-color: " + color(i) + ";'> District " + i + "</span></span>" +
       "</label>");
     $("#cd-selectors").append(radio);
   }
@@ -166,31 +183,31 @@ function changeCDCount() {
 
 // Calculate metrics for those districts
 function calculateMetrics() {
-  $("#cd-metrics").empty();
-
-  let districts = {};
-
-  for (let i = 1; i <= cds; i++) {
-    districts[i] = {
-      precincts: 0
-    };
-  }
-
-  for (let key in Object.values(features.features)) {
-    let feature = features.features[key];
-    
-    if (feature.properties.cd) {
-      districts[feature.properties.cd].precincts++;
-    }
-  }
-
-  for (i = 1; i <= cds; i++) {
-    let metric = $("<div>" +
-    "<h3>District " + i + "</h3>" +
-    "</div>");
-
-    metric.append("<p># of Precincts: " + districts[i].precincts);
-
-    $("#cd-metrics").append(metric);
-  }
+  // $("#cd-metrics").empty();
+  //
+  // let districts = {};
+  //
+  // for (let i = 1; i <= cds; i++) {
+  //   districts[i] = {
+  //     precincts: 0
+  //   };
+  // }
+  //
+  // for (let key in Object.values(features.features)) {
+  //   let feature = features.features[key];
+  //
+  //   if (feature.properties.cd) {
+  //     districts[feature.properties.cd].precincts++;
+  //   }
+  // }
+  //
+  // for (i = 1; i <= cds; i++) {
+  //   let metric = $("<div>" +
+  //   "<h3>District " + i + "</h3>" +
+  //   "</div>");
+  //
+  //   metric.append("<p># of Precincts: " + districts[i].precincts);
+  //
+  //   $("#cd-metrics").append(metric);
+  // }
 }
